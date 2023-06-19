@@ -19,7 +19,13 @@ class DriveAPI:
                 client_secret = creds_json['client_secret']
             )
             self.service_client = build('drive', 'v3', credentials = creds)
-            self.mimetyper = Magic(mime = True)
+            
+    def _check_mimetype(self, mimetype: str) -> str:
+        if mimetype is None:
+            mimetype = guess_type(media_file)
+            if mimetype is None:
+                return None
+        return mimetype
     
     def _send_chunks(self, request) -> dict:
         response = None
@@ -40,25 +46,35 @@ class DriveAPI:
             
         return file
     
-    def resumable_upload(self, media_file: str, metadata = None: dict, mimetype = None : str, chunksize = 262144 : int) -> str:
-        if mimetype is None:
-            mimetype = guess_type(media_file)
-            if mimetype is None:
-                raise MimeTypeNotFoundError
+    def multipart_upload(self, media_file: str, metadata: dict = None, mimetype: str = None) -> str:
+        if self._check_mimetype(mimetype) is None:
+            return None
+        
+        media_to_upload = MediaFileUpload(media_file, mimetype = mimetype)
+        
+        response = self.service_client.files().create(body = metadata, media_body = media_to_upload, fields = 'id').execute()
+        
+        return response['id']
+        
+    
+    def resumable_upload(self, media_file: str, metadata: dict = None, mimetype: str = None, chunksize: int = 262144) -> str:
+        if self._check_mimetype(mimetype) is None:
+            return None
                     
         media_to_upload = MediaFileUpload(media_file, mimetype = mimetype, resumable = True, chunksize = chunksize)
         
-        request = service_client.files().create(body = metadata, media_body = media_to_upload, fields = 'id')
+        request = self.service_client.files().create(body = metadata, media_body = media_to_upload, fields = 'id')
         response = self._send_chunks(request)
         
         return response['id']
 
     def download(self, file_id) -> BytesIO:
-        request = service_client.files().get_media(fileId=model_file_id)
+        request = self.service_client.files().get_media(fileId=model_file_id)
         return self._receive_chunks(request)
     
     def delete(self, file_id):
-        service_client.files().delete(fileId = file_id).execute()
+        self.service_client.files().delete(fileId = file_id).execute()
         
 if __name__ == '__main__':
-    google_drive = DriveApi('../../sessions/google-drive-cred.json')
+    google_drive = DriveAPI('../../sessions/google-drive-cred.json')
+    google_drive.multipart_upload('../../driver.py', metadata = {'name': 'driver.py'}, mimetype = 'text/plain')

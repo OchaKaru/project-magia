@@ -4,15 +4,15 @@ from time import sleep
 from util.post import RedditPost
 
 class RedditAPI:    
-    def __init__(self, app_id: str, version = "v0.1.0" : str, by_line = "anon" : str, platform = "windows" : str):
-        self.BEST_POSTS_URL = "https://www.reddit.com/r/{subreddit}/best.json?{params}"
-        self.HOT_POSTS_URL = "https://www.reddit.com/r/{subreddit}/hot.json?{params}"
-        self.NEW_POSTS_URL = "https://www.reddit.com/r/{subreddit}/new.json?{params}"
-        self.RISING_POSTS_URL = "https://www.reddit.com/r/{subreddit}/new.json?{params}"
-        self.TOP_POSTS_URL = "https://www.reddit.com/r/{subreddit}/rising.json?{params}"
-        self.POST_COMMENTS_URL = "https://www.reddit.com/r/{subreddit}/comments/{id}/top.json"
+    def __init__(self, app_id: str, version: str = "v0.1.0", by_line: str = "anon", platform: str = "linux"):
+        self.BEST_POSTS_URL = "https://www.reddit.com/r/{}/best.json?{}"
+        self.HOT_POSTS_URL = "https://www.reddit.com/r/{}/hot.json?{}"
+        self.NEW_POSTS_URL = "https://www.reddit.com/r/{}/new.json?{}"
+        self.RISING_POSTS_URL = "https://www.reddit.com/r/{}/new.json?{}"
+        self.TOP_POSTS_URL = "https://www.reddit.com/r/{}/rising.json?{}"
+        self.POST_COMMENTS_URL = "https://www.reddit.com/r/{}/comments/{}.json"
         
-        self.headers = {'User-Agent': f'{platform}:{app_id}:{vesion} (by {by_line})'}
+        self.headers = {'User-Agent': f'{platform}:{app_id}:{version} (by {by_line})'}
         
         self.filters = {
             'min_upvote_ratio': 0.0,
@@ -78,11 +78,11 @@ class RedditAPI:
             return False
         if link_data['score'] < self.filters['min_score'] or link_data['score'] > self.filters['max_score']:
             return False
-        if len(link_data['media_embeded']) < self.fileters['min_len_media_embeded'] or len(link_data['media_embeded']) > self.fileters['max_len_media_embeded']:
+        if len(link_data['media_embed']) < self.filters['min_len_media_embeded'] or len(link_data['media_embed']) > self.filters['max_len_media_embeded']:
             return False
         if link_data['is_reddit_media_domain'] != self.filters['is_reddit_media_domain'] or link_data['is_meta'] != self.filters['is_meta']:
             return False
-        if link_data['media_only'] != self.filters['media_only'] or ink_data['is_video'] != self.filters['is_video'] or link_data['over_18'] != self.filters['over_18']:
+        if link_data['media_only'] != self.filters['media_only'] or link_data['is_video'] != self.filters['is_video'] or link_data['over_18'] != self.filters['over_18']:
             return False
         if self.filters['post_hint'] is not None and link_data['post_hint'] != self.filters['post_hint']:
             return False
@@ -92,29 +92,39 @@ class RedditAPI:
         return True
 
     def _get_post_by_id(self, subreddit: str, post_id: str) -> RedditPost:
-        pass
+        response = requests.get(self.POST_COMMENTS_URL.format(subreddit, post_id), headers = self.headers)
+
+        if response.ok:
+            return RedditPost(response.json())
+        else:
+            print(f'Error {response.status_code}')
+            return None
+            
+    def _add_post_to_list(self, post_list: list, subreddit: str, link_data):
+        if self._match_filters(link_data):
+            post = self._get_post_by_id(subreddit, link_data['id'])
+            if post is not None:
+                post_list.append(post)
         
-    def get_best_posts(self, subreddit, after = "" : str, before = "" : str) -> list:
+    def get_best_posts(self, subreddit, after: str = "", before: str = "") -> list:
         posts = []
         
         done = False
         while done is not True:
             params = f"after={after}&before={before}"
         
-            response = requests.get(self.BEST_POSTS_URL.format(subreddit, params), headers=headers)            
+            response = requests.get(self.BEST_POSTS_URL.format(subreddit, params), headers = self.headers)            
             if response.ok:
                 listing_data = response.json()['data']
 
                 for link_json in listing_data['children']:
                     link_data = link_json['data']
+                    self._add_post_to_list(posts, subreddit, link_data)
 
-                    if self._match_filters(link_data):
-                        posts.append(self._get_post_by_id(subreddit, link_data['id']))
-                        
-                if response_data['after'] == None:
+                if listing_data['after'] == None:
                     done = True
 
-                after = data['after']
+                after = listing_data['after']
                 before = ""
             else:
                 print(f'Error {response.status_code}')
@@ -122,27 +132,25 @@ class RedditAPI:
                 
         return posts
         
-    def get_hot_posts(self, subreddit, region = "GLOBAL" : str, after = "" : str, before = "" : str) -> list:
+    def get_hot_posts(self, subreddit, region: str = "GLOBAL", after: str = "", before: str = "") -> list:
         posts = []
         
         done = False
         while done is not True:
             params = f"g={region}&after={after}&before={before}"
         
-            response = requests.get(self.HOT_POSTS_URL.format(subreddit, params), headers=headers)            
+            response = requests.get(self.HOT_POSTS_URL.format(subreddit, params), headers = self.headers)            
             if response.ok:
                 listing_data = response.json()['data']
 
                 for link_json in listing_data['children']:
                     link_data = link_json['data']
-
-                    if self._match_filters(link_data):
-                        posts.append(self._get_post_by_id(subreddit, link_data['id']))
+                    self._add_post_to_list(posts, subreddit, link_data)
                         
-                if response_data['after'] == None:
+                if listing_data['after'] == None:
                     done = True
 
-                after = data['after']
+                after = listing_data['after']
                 before = ""
             else:
                 print(f'Error {response.status_code}')
@@ -150,27 +158,25 @@ class RedditAPI:
                 
         return posts
                 
-    def get_new_posts(self, subreddit, after = "" : str, before = "" : str) -> list:
+    def get_new_posts(self, subreddit, after: str = "", before: str = "") -> list:
         posts = []
         
         done = False
         while done is not True:
-            params = f"after={after}&before={before}
+            params = f"after={after}&before={before}"
         
-            response = requests.get(self.NEW_POSTS_URL.format(subreddit, params), headers=headers)          
+            response = requests.get(self.NEW_POSTS_URL.format(subreddit, params), headers = self.headers)          
             if response.ok:
                 listing_data = response.json()['data']
 
                 for link_json in listing_data['children']:
                     link_data = link_json['data']
-
-                    if self._match_filters(link_data):
-                        posts.append(self._get_post_by_id(subreddit, link_data['id']))
+                    self._add_post_to_list(posts, subreddit, link_data)
                         
-                if response_data['after'] == None:
+                if listing_data['after'] == None:
                     done = True
 
-                after = data['after']
+                after = listing_data['after']
                 before = ""
             else:
                 print(f'Error {response.status_code}')
@@ -178,27 +184,25 @@ class RedditAPI:
                 
         return posts
                 
-    def get_rising_posts(self, subreddit, after = "" : str, before = "" : str) -> list:
+    def get_rising_posts(self, subreddit, after: str = "", before: str = "") -> list:
         posts = []
         
         done = False
         while done is not True:
-            params = f"after={after}&before={before}
+            params = f"after={after}&before={before}"
         
-            response = requests.get(self.RISING_POSTS_URL.format(subreddit, params), headers=headers)            
+            response = requests.get(self.RISING_POSTS_URL.format(subreddit, params), headers = self.headers)            
             if response.ok:
                 listing_data = response.json()['data']
 
                 for link_json in listing_data['children']:
                     link_data = link_json['data']
-
-                    if self._match_filters(link_data):
-                        posts.append(self._get_post_by_id(subreddit, link_data['id']))
+                    self._add_post_to_list(posts, subreddit, link_data)
                         
-                if response_data['after'] == None:
+                if listing_data['after'] == None:
                     done = True
 
-                after = data['after']
+                after = listing_data['after']
                 before = ""
             else:
                 print(f'Error {response.status_code}')
@@ -206,30 +210,32 @@ class RedditAPI:
                 
         return posts
 
-    def get_top_posts(self, subreddit, time = "all" : str, after = "" : str, before = "" : str) -> list:
+    def get_top_posts(self, subreddit, time: str = "all", after: str = "", before: str = "") -> list:
         posts = []
         
         done = False
         while done is not True:
-            params = f"t={time}&after={after}&before={before}
+            params = f"t={time}&after={after}&before={before}"
         
-            response = requests.get(self.TOP_POSTS_URL.format(subreddit, params), headers=headers)
+            response = requests.get(self.TOP_POSTS_URL.format(subreddit, params), headers = self.headers)
             if response.ok:
                 listing_data = response.json()['data']
 
                 for link_json in listing_data['children']:
                     link_data = link_json['data']
-
-                    if self._match_filters(link_data):
-                        posts.append(self._get_post_by_id(subreddit, link_data['id']))
+                    self._add_post_to_list(posts, subreddit, link_data)
                         
-                if response_data['after'] == None:
+                if listing_data['after'] == None:
                     done = True
 
-                after = data['after']
+                after = listing_data['after']
                 before = ""
             else:
                 print(f'Error {response.status_code}')
                 break
                 
         return posts
+    
+if __name__ == '__main__':
+    reddit = RedditAPI("project-magia", by_line = "Kalvin Garcia")
+    print(reddit.get_top_posts("animequestions", time = "day")[0].comments[0])
