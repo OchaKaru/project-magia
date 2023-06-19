@@ -1,0 +1,1 @@
+from magiamodel.magiagen import MagiaGPT
