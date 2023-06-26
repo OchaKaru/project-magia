@@ -4,13 +4,13 @@ from torch.nn import Module, ModuleList, Linear, Dropout
 
 class SelfAttentionHead(Module):
     # one head of self attention
-    def __init__(self, head_size):
+    def __init__(self, number_of_embeddings: int, head_size: int, block_size: int, dropout_rate: float):
         super().__init__()
-        self.key = Linear(n_embed, head_size, bias = False)
-        self.query = Linear(n_embed, head_size, bias = False)
-        self.value = Linear(n_embed, head_size, bias = False)
+        self.key = Linear(number_of_embeddings, head_size, bias = False)
+        self.query = Linear(number_of_embeddings, head_size, bias = False)
+        self.value = Linear(number_of_embeddings, head_size, bias = False)
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
-        self.dropout = Dropout(dropout) # adding drop out to prevent overfitting
+        self.dropout = Dropout(dropout_rate) # adding drop out to prevent overfitting
 
     def forward(self, x):
         B, T, C = x.shape
@@ -31,11 +31,11 @@ class SelfAttentionHead(Module):
     
 class MultiSelfAttentionHead(nn.Module):
     # the hydra of self attention
-    def __init__(self, num_heads, head_size):
+    def __init__(self, number_of_embeddings: int, head_size: int, block_size: int, number_of_heads: int, dropout_rate: float):
         super().__init__()
-        self.heads = ModuleList([SelfAttentionHead(head_size) for _ in range(num_heads)])
-        self.proj = Linear(head_size * num_heads, n_embed) # we need projection layers to finalize the projection onto the residual pathway
-        self.dropout = Dropout(dropout) # adding drop out to prevent overfitting
+        self.heads = ModuleList([SelfAttentionHead(number_of_embeddings, head_size, block_size, dropout_rate) for _ in range(number_of_heads)])
+        self.proj = Linear(head_size * number_of_heads, number_of_embeddings) # we need projection layers to finalize the projection onto the residual pathway
+        self.dropout = Dropout(dropout_rate) # adding drop out to prevent overfitting
 
     def forward(self, x):
         out = cat([h(x) for h in self.heads], dim = - 1)

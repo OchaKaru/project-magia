@@ -120,6 +120,7 @@ class RedditAPI:
                 for link_json in listing_data['children']:
                     link_data = link_json['data']
                     self._add_post_to_list(posts, subreddit, link_data)
+                    sleep(1)
 
                 if listing_data['after'] == None:
                     done = True
@@ -129,6 +130,8 @@ class RedditAPI:
             else:
                 print(f'Error {response.status_code}')
                 break
+                
+            sleep(1)
                 
         return posts
         
@@ -146,6 +149,7 @@ class RedditAPI:
                 for link_json in listing_data['children']:
                     link_data = link_json['data']
                     self._add_post_to_list(posts, subreddit, link_data)
+                    sleep(1)
                         
                 if listing_data['after'] == None:
                     done = True
@@ -155,6 +159,8 @@ class RedditAPI:
             else:
                 print(f'Error {response.status_code}')
                 break
+                
+            sleep(1)
                 
         return posts
                 
@@ -172,6 +178,7 @@ class RedditAPI:
                 for link_json in listing_data['children']:
                     link_data = link_json['data']
                     self._add_post_to_list(posts, subreddit, link_data)
+                    sleep(1)
                         
                 if listing_data['after'] == None:
                     done = True
@@ -181,6 +188,8 @@ class RedditAPI:
             else:
                 print(f'Error {response.status_code}')
                 break
+                
+            sleep(1)
                 
         return posts
                 
@@ -198,6 +207,7 @@ class RedditAPI:
                 for link_json in listing_data['children']:
                     link_data = link_json['data']
                     self._add_post_to_list(posts, subreddit, link_data)
+                    sleep(1)
                         
                 if listing_data['after'] == None:
                     done = True
@@ -207,6 +217,8 @@ class RedditAPI:
             else:
                 print(f'Error {response.status_code}')
                 break
+                
+            sleep(1)
                 
         return posts
 
@@ -224,6 +236,7 @@ class RedditAPI:
                 for link_json in listing_data['children']:
                     link_data = link_json['data']
                     self._add_post_to_list(posts, subreddit, link_data)
+                    sleep(1)
                         
                 if listing_data['after'] == None:
                     done = True
@@ -233,6 +246,8 @@ class RedditAPI:
             else:
                 print(f'Error {response.status_code}')
                 break
+                
+            sleep(1)
                 
         return posts
     

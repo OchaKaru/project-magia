@@ -22,6 +22,14 @@ class RedditPost:
     
     def get_most_popular_comment(self):
         pass
-            
+    
+    def __eq__(self, other):
+        if isinstance(other, RedditPost):
+            return self.post_id == other.post_id
+        return False
+    
+    def __hash__(self):
+        return self.post_id
+    
     def __str__(self):
         return f"{self.title}:\n{self.post_body}"

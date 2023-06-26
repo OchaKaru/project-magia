@@ -4,26 +4,39 @@ from torch import autocast, cat, multinomial
 from torch.nn import Module, Embedding, LayerNorm, Linear
 from torch.nn.functional import softmax, cross_entropy
 
-import bitsandbytes as bnb
+from api.googledrive.driveapi import DriveAPI
+
+from io import BytesIO
+from os.path import exists
 
 class GPTModel(Module):
-    def __init__(self):
+    def __init__(self, vocab_size: int, number_of_embeddings: int = 128, block_size: int = 64, number_of_heads: int = 3, number_of_layers: int = 3, dropout_rate: float = 0.4):
         super().__init__()
         # each token directly reads off the logits for the next token from a lookup table
-        self.token_embedding_table = Embedding(vocab_size, n_embed)
-        self.position_embedding_table = Embedding(block_size, n_embed) # positional embedding to add the spatial feature to attention
-        self.blocks = CheckPointed(*[SelfAttentionBlock(n_embed, n_head = n_head) for _ in range(n_layers)]) # asterisk here unpacks the list
-        self.lnf = LayerNorm(n_embed) # final layer norm
-        self.lang_mod_head = Linear(n_embed, vocab_size) # language model head
+        self.token_embedding_table = Embedding(vocab_size, number_of_embeddings)
+        self.position_embedding_table = Embedding(block_size, number_of_embeddings) # positional embedding to add the spatial feature to attention
+        self.blocks = CheckPointed(*[SelfAttentionBlock(number_of_embeddings, number_of_heads, block_size, dropout_rate) for _ in range(number_of_layers)]) # asterisk here unpacks the list
+        self.lnf = LayerNorm(number_of_embeddings) # final layer norm
+        self.lang_model_head = Linear(number_of_embeddings, vocab_size) # language model head
+        
+        self.apply(self._init_weights)
+        
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets = None):
+    def forward(self, idx, targets = None, device = 'cpu'):
         B, T = idx.shape
         # idx and targets are both (B, T) tensor of integers
         token_embeddings = self.token_embedding_table(idx) # (B, T, C)
         position_embeddings = self.position_embedding_table(torch.arange(T, device = device)) # (T, C)
         x = token_embeddings + position_embeddings # (B, T, C)
         x = self.lnf(self.blocks(x)) # apply alternating self attention and computation (B, T, C) then layer norm
-        logits = self.lang_mod_head(x) # (B, T, vocab_size)
+        logits = self.lang_model_head(x) # (B, T, vocab_size)
 
         if targets is None:
             loss = None
