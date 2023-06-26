@@ -25,7 +25,7 @@ class DataCollector:
         post.extend(self.reddit.get_top_posts(subreddit))
         return list(set(posts))
         
-    def _collect_questions():
+    def _collect_questions(self):
         questions = []
         for subreddit in []:
             for post in self._get_all_reddit_posts(subreddit):
