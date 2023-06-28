@@ -1,0 +1,10 @@
+##### REQUIREMENTS WITHOUT VERSION #####
+
+tiktoken
+google-api-python-client
+fandom-py
+wikipedia
+
+##### REQUIREMENTS WITH VERSION #####
+
+bitsandbytes==0.35.0

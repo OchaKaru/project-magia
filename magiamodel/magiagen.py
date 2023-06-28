@@ -4,8 +4,6 @@ from torch import autocast, cat, multinomial
 from torch.nn import Module, Embedding, LayerNorm, Linear
 from torch.nn.functional import softmax, cross_entropy
 
-from api.googledrive.driveapi import DriveAPI
-
 from io import BytesIO
 from os.path import exists
 
