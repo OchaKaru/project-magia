@@ -1,6 +1,8 @@
 from .comment import RedditComment
 from .comment import NoCommentDataError
 
+from hashlib import sha256
+
 class NoPostDataError(Exception):
     pass
 
@@ -37,7 +39,7 @@ class RedditPost:
         return False
     
     def __hash__(self):
-        return hash(self.post_id)
+        return sha256(self.post_id.encode('utf-8')).hexdigest()
     
     def __str__(self):
         return f"{self.title}:\n{self.post_body}"
