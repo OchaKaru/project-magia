@@ -1,6 +1,6 @@
 #! /bin/bash
 
-pip install -r required
+pip install -r ./scripts/util/required
 cd modeltraining/
 clear
 echo "Starting Data Collection"
