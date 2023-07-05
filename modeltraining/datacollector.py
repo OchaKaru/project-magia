@@ -4,6 +4,8 @@ from api.reddit.redditapi import RedditAPI
 import fandom
 from wikipediaapi import Wikipedia
 
+from util.progressbar import progress_bar
+
 import json
 import csv
 from collections import namedtuple
@@ -74,11 +76,10 @@ class DataCollector:
 
     def _get_wiki_data(self, page: str):
         try:
-            wiki_page = self._attempt_page_access(page)
-            if wiki_page.exists and not self.status['visited'].get(page, False):
+            if self._attempt_page_access(page).exists and not self.status['visited'].get(page, False):
                 self.status['visited'][page] = True
                 sleep(1)
-                return page + "\n\n" + wiki_page.text + "\n\n"  
+                return page + "\n\n" + self._attempt_page_access(page).text + "\n\n"  
             else:
                 return ""
         except PageMustNotExistError:
@@ -88,7 +89,7 @@ class DataCollector:
         related_information = ""
         try:
             for link in self._attempt_page_access(page).links:
-                if link.find("List of") == -1:
+                if link.find("List of") == -1 and link.find("Lists of") == -1:
                     related_information += self._get_wiki_data(link)
             return related_information
         except PageMustNotExistError:
@@ -99,14 +100,31 @@ class DataCollector:
         
         try:
             for link in self._attempt_page_access(page).links:
-                wiki_page = self._attempt_page_access(link)
-                if link.find("List of") != -1 and wiki_page.exists and not self.status['visited'].get(link, False):
+                if link.find("List of") != -1 and self._attempt_page_access(link).exists and not self.status['visited'].get(link, False):
                     self.status['visited'][link] = True
                     sleep(1)
-                    list_of_links.extend(wiki_page.links)
+                    for link in self._attempt_page_access(link).links:
+                        if link.find("List of") == -1 and link.find("Lists of") == -1:
+                            list_of_links.append(link)
             return list_of_links
         except PageMustNotExistError:
             return list_of_links
+        
+    def _get_list_data(self, list_type: str, file_descriptor):
+        current_count = len(self.status[list_type][f'list_of_{list_type}'])
+        while current_count > 0:
+            text_to_append = ""
+            for _ in range(100):
+                try: page = self.status[list_type][f'list_of_{list_type}'].pop(0)
+                except IndexError: break
+                text_to_append += self._get_wiki_data(page)
+            file_descriptor.write(text_to_append)
+            current_count = len(self.status[list_type][f'list_of_{list_type}'])
+            progress_bar("Data collection progress", 1 - current_count / self.status[list_type]['list_total'])
+            self._dump_status()
+        file_descriptor.close()
+        print(f"Completed collecting the {list_type} data.")
+        self.status[list_type]['status'] == 'complete'
 
     def _collect_anime_wiki_data(self) -> str:
         if self.status['anime']['status'] == 'uncommenced':
@@ -117,19 +135,12 @@ class DataCollector:
             file.write(self._get_related_data('Anime'))
 
             self.status['anime']['list_of_anime'] = self._get_list_links("Lists of anime")
+            self.status['anime']['list_total'] = len(self.status['anime']['list_of_anime'])
             self._dump_status()
         else:
             file = open("./datadump/anime_corpus.txt", "a", encoding = 'utf-8')
 
-        while len(self.status['anime']['list_of_anime']) > 0:
-            text_to_append = ""
-            for _ in range(100):
-                page = self.status['anime']['list_of_anime'].pop(0)
-                text_to_append += self._get_wiki_data(page)
-                text_to_append += self._get_related_data(page)
-            file.write(text_to_append)
-            self._dump_status()
-        file.close()
+        self._get_list_data("anime", file)
             
         file_metadata = {'name': "anime_corpus.txt", 'parents': ['1SOXyHF6HxfXSjXZJv9Kk0IRYG8DYLVO5']}
         return self.google_drive.resumable_upload("./datadump/anime_corpus.txt", metadata = file_metadata, mimetype = 'text/plain')
@@ -143,19 +154,12 @@ class DataCollector:
             file.write(self._get_related_data('Manga'))
 
             self.status['manga']['list_of_manga'] = self._get_list_links("Lists of manga")
+            self.status['manga']['list_total'] = len(self.status['manga']['list_of_manga'])
             self._dump_status()
         else:
             file = open("./datadump/manga_corpus.txt", "a", encoding = 'utf-8')
 
-        while len(self.status['manga']['list_of_manga']) > 0:
-            text_to_append = ""
-            for _ in range(50):
-                page = self.status['manga']['list_of_manga'].pop(0)
-                text_to_append += self._get_wiki_data(page)
-                text_to_append += self._get_related_data(page)
-            file.write(text_to_append)
-            self._dump_status()
-        file.close()
+        self._get_list_data("manga", file)
         
         file_metadata = {'name': "manga_corpus.txt", 'parents': ['1SOXyHF6HxfXSjXZJv9Kk0IRYG8DYLVO5']}
         return self.google_drive.resumable_upload("./datadump/manga_corpus.txt", metadata = file_metadata, mimetype = 'text/plain')
@@ -169,19 +173,12 @@ class DataCollector:
             file.write(self._get_related_data('Video games'))
 
             self.status['games']['list_of_games'] = self._get_list_links("Lists of video games")
+            self.status['games']['list_total'] = len(self.status['games']['list_of_games'])
             self._dump_status()
         else:
             file = open("./datadump/game_corpus.txt", "a", encoding = 'utf-8')
 
-        while len(self.status['games']['list_of_games']) > 0:
-            text_to_append = ""
-            for _ in range(50):
-                page = self.status['games']['list_of_games'].pop(0)
-                text_to_append += self._get_wiki_data(page)
-                text_to_append += self._get_related_data(page)
-            file.write(text_to_append)
-            self._dump_status()
-        file.close()
+        self._get_list_data("games", file)
         
         file_metadata = {'name': "game_corpus.txt", 'parents': ['1SOXyHF6HxfXSjXZJv9Kk0IRYG8DYLVO5']}
         return self.google_drive.resumable_upload("./datadump/game_corpus.txt", metadata = file_metadata, mimetype = 'text/plain')
@@ -201,21 +198,21 @@ class DataCollector:
             file.close()
         
         if self.status['anime']['status'] != "complete":
-            print("Anime")
+            print("Beginning anime data collection...")
             data_loc['corpus_drive_ids']['anime'] = self._collect_anime_wiki_data()
             file = open("../sessions/modelinfo/dataloc.json", "w", encoding = 'utf-8')
             json.dump(data_loc, file)
             file.close()
 
         if self.status['manga']['status'] != "complete":
-            print("Manga")
+            print("Beginning manga data collection...")
             data_loc['corpus_drive_ids']['manga'] = self._collect_manga_wiki_data()
             file = open("../sessions/modelinfo/dataloc.json", "w", encoding = 'utf-8')
             json.dump(data_loc, file)
             file.close()
 
         if self.status['games']['status'] != "complete":
-            print("Games")
+            print("Beginning gaming data collection...")
             data_loc['corpus_drive_ids']['games'] = self._collect_game_wiki_data()
             file = open("../sessions/modelinfo/dataloc.json", "w", encoding = 'utf-8')
             json.dump(data_loc, file)

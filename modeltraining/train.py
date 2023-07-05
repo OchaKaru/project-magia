@@ -14,41 +14,41 @@ class ModelTrainer():
         with open(self.param_file, 'r') as file:
             self.data_loc = json.loads(file.read())
             file.close()
-        
+
         self.device = device
-            
+
         self.model_to_train = model
         if attempt_load:
             self._load_model()
-            
+
         self.encoder = tiktoken.encoding_for_model("gpt-3")            
         self.optimizer = optim.AdamW8bit(magia.parameters(), lr = self.hyperparams['learning_rate'])
         self.scaler = GradScaler()
-        
+
         self.train_data = None
         self.eval_data = None
-            
+
     def _save_model(self):
         torch.save(self.model.state_dict(), self.data_loc['model_file'])
         file_metadata = {'name': self.data_loc['model_file'], 'parents': self.data_loc['parent_drive_ids']}
-                
+
         new_drive_id = self.service_client.resumable_upload(self.data_loc['model_file'], metadata = file_metadata, mimetype = 'text/plain')
-        
+
         if self.data_loc['model_drive_id'] != '':
             self.service_client.delete(self.data_loc['model_drive_id'])
-        
+
         self.data_loc['model_drive_id'] = new_drive_id
         with open(self.data_loc_file, 'w') as file:
             file.write(json.dump(self.data_loc))
             file.close()
-    
+
     def _load_model(self):
         if exists(self.data_loc['model_file']):
             self.model_to_train.load_state_dict(torch.load(self.data_loc['model_file']))
         elif self.data_loc['model_drive_id'] != '':
             model_file = self.service_client.download(self.data_loc['model_drive_id'])
             self.model_to_train.load_state_dict(torch.load(BytesIO(model_file.getvalue())))
-            
+
     def _download_data(self, corpus_type: str):
         downloader = DataCollector()
         with open("../sessions/dataloc.json", "rw", encode = 'utf-8') as file:
@@ -61,8 +61,8 @@ class ModelTrainer():
             
             data_loc['last_corpus_type'] = corpus_type
             file.write(json.dump(data_loc))
-            
-    def _get_batch(self, data_set)
+    
+    def _get_batch(self, data_set):
         #generate small bacth of data input x and target y
         data = self.train_data if split == 'train' else self.eval_data
         ix = randint(len(data) - block_size, (batch_size,)) # generates an array of random numbers with the shape (batch_size,) and max range len(data) - block_size
@@ -72,7 +72,7 @@ class ModelTrainer():
 
         x, y = x.to(device), y.to(device) # sending to the current device
         return x, y
-    
+
     def _training_step():
         data, targets = self._get_batch('train')
 
@@ -87,7 +87,7 @@ class ModelTrainer():
         self.scaler.step(self.optimizer)
         self.optimizer.zero_grad(set_to_none = True)
         self.scaler.update()
-    
+
     @no_grad()
     def _evaluate_model():
         self.model.eval()
@@ -104,7 +104,7 @@ class ModelTrainer():
 
         self.model.train()
         return out
-      
+
     def train(self):
         accumulation_step = int(self.hyperparams['batch_accumulation'] / self.hyperparams['batch_size'])
         step_count = self.hyperparams['max_iterations'] * self.hyperparams['accumulation_step']
