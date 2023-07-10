@@ -24,10 +24,6 @@ class ModelTrainer():
 
         self.device = device
 
-        self.model_to_train = model
-        if attempt_load:
-            self._load_model()
-
         self.encoder = tiktoken.encoding_for_model("gpt-4")            
         self.optimizer = optim.AdamW8bit(self.model_to_train.parameters(), lr = self.training_params['learning_rate'])
         self.scaler = GradScaler()
@@ -36,6 +32,10 @@ class ModelTrainer():
         self.train_data = None
         self.eval_data = None
         self.accumulation_step = -1
+        
+        self.model_to_train = model
+        if attempt_load:
+            self._load_model()
 
     def _save_model(self):
         save(self.model_to_train.state_dict(), self.data_loc['model_file'])
