@@ -1,4 +1,4 @@
-from util.checkpointed import CheckPointed
+from .checkpointed import CheckPointed
 from torch.nn import Module, Linear, ReLU, Dropout
 
 class FeedForward(Module):

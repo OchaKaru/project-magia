@@ -1,10 +1,10 @@
-from api.googledrive.driveapi import DriveAPI
+from .api.googledrive.driveapi import DriveAPI
 
-from api.reddit.redditapi import RedditAPI
+from .api.reddit.redditapi import RedditAPI
 import fandom
 from wikipediaapi import Wikipedia
 
-from util.progressbar import progress_bar
+from .util.progressbar import progress_bar
 
 import json
 import csv
@@ -18,14 +18,14 @@ class PageMustNotExistError(Exception):
     pass
 
 class DataCollector:
-    def __init__(self, drive_cred_file: str = '../sessions/google-drive-cred.json'):
+    def __init__(self, drive_cred_file: str = './sessions/google-drive-cred.json'):
         self.google_drive = DriveAPI(drive_cred_file)
         self.wikipedia = Wikipedia('Project Magia v0.1.0 (by Kalvin Garcia)', 'en')
         self.reddit = RedditAPI("project-magia", by_line = "Kalvin Garcia")
         
         self.reddit.set_min_num_comments(1)
 
-        with open("./datadump/status.json", "r") as file:
+        with open("./modeltraining/datadump/status.json", "r") as file:
             self.status = json.loads(file.read())
             if self.status['visited'] == "":
                 self.status['visited'] = {}
@@ -124,7 +124,6 @@ class DataCollector:
             self._dump_status()
         file_descriptor.close()
         print(f"Completed collecting the {list_type} data.")
-        self.status[list_type]['status'] == 'complete'
 
     def _collect_anime_wiki_data(self) -> str:
         if self.status['anime']['status'] == 'uncommenced':
@@ -143,7 +142,9 @@ class DataCollector:
         self._get_list_data("anime", file)
             
         file_metadata = {'name': "anime_corpus.txt", 'parents': ['1SOXyHF6HxfXSjXZJv9Kk0IRYG8DYLVO5']}
-        return self.google_drive.resumable_upload("./datadump/anime_corpus.txt", metadata = file_metadata, mimetype = 'text/plain')
+        drive_id = self.google_drive.resumable_upload("./datadump/anime_corpus.txt", metadata = file_metadata, mimetype = 'text/plain')
+        self.status['anime']['status'] == 'complete'
+        return drive_id
             
     def _collect_manga_wiki_data(self) -> str:
         if self.status['manga']['status'] == 'uncommenced':
@@ -162,7 +163,9 @@ class DataCollector:
         self._get_list_data("manga", file)
         
         file_metadata = {'name': "manga_corpus.txt", 'parents': ['1SOXyHF6HxfXSjXZJv9Kk0IRYG8DYLVO5']}
-        return self.google_drive.resumable_upload("./datadump/manga_corpus.txt", metadata = file_metadata, mimetype = 'text/plain')
+        drive_id = self.google_drive.resumable_upload("./datadump/manga_corpus.txt", metadata = file_metadata, mimetype = 'text/plain')
+        self.status['manga']['status'] == 'complete'
+        return drive_id
     
     def _collect_game_wiki_data(self) -> str:
         if self.status['games']['status'] == 'uncommenced':
@@ -181,7 +184,9 @@ class DataCollector:
         self._get_list_data("games", file)
         
         file_metadata = {'name': "game_corpus.txt", 'parents': ['1SOXyHF6HxfXSjXZJv9Kk0IRYG8DYLVO5']}
-        return self.google_drive.resumable_upload("./datadump/game_corpus.txt", metadata = file_metadata, mimetype = 'text/plain')
+        drive_id =  self.google_drive.resumable_upload("./datadump/game_corpus.txt", metadata = file_metadata, mimetype = 'text/plain')
+        self.status['games']['status'] == 'complete'
+        return drive_id
     
     def collect_data(self):
         file = open("../sessions/modelinfo/dataloc.json", "r", encoding = 'utf-8')

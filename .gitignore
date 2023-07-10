@@ -1,4 +1,5 @@
 **/sessions
 **/.ipynb_checkpoints
 **/datadump
-./loading_cat.py
+**/parameters
+loading_cat.py

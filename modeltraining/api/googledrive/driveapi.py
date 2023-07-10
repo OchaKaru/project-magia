@@ -69,7 +69,7 @@ class DriveAPI:
         return response['id']
 
     def download(self, file_id) -> BytesIO:
-        request = self.service_client.files().get_media(fileId=model_file_id)
+        request = self.service_client.files().get_media(fileId = file_id)
         return self._receive_chunks(request)
     
     def delete(self, file_id):
