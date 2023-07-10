@@ -23,19 +23,20 @@ class ModelTrainer():
             file.close()
 
         self.device = device
-
-        self.encoder = tiktoken.encoding_for_model("gpt-4")            
-        self.optimizer = optim.AdamW8bit(self.model_to_train.parameters(), lr = self.training_params['learning_rate'])
-        self.scaler = GradScaler()
+        
         self.service_client = DriveAPI(drive_cred_file)
-
-        self.train_data = None
-        self.eval_data = None
-        self.accumulation_step = -1
         
         self.model_to_train = model
         if attempt_load:
             self._load_model()
+
+        self.encoder = tiktoken.encoding_for_model("gpt-4")            
+        self.optimizer = optim.AdamW8bit(self.model_to_train.parameters(), lr = self.training_params['learning_rate'])
+        self.scaler = GradScaler()
+
+        self.train_data = None
+        self.eval_data = None
+        self.accumulation_step = -1
 
     def _save_model(self):
         save(self.model_to_train.state_dict(), self.data_loc['model_file'])
