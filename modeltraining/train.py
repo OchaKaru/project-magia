@@ -9,6 +9,7 @@ from torch import autocast, no_grad, zeros, tensor, stack, randint, float16, sav
 from torch.cuda.amp import GradScaler
 
 from os.path import exists
+from io import BytesIO
 
 class ModelTrainer():
     def __init__(self, model, training_param_file: str = './sessions/modelinfo/trainparams.json', data_loc_file: str = "./sessions/modelinfo/dataloc.json", device: str = 'cpu', attempt_load: bool = True, drive_cred_file: str = './sessions/google-drive-cred.json'):        
@@ -74,8 +75,9 @@ class ModelTrainer():
         self.eval_data = data[n:]
         
         file = open("./sessions/modelinfo/dataloc.json", "w")
-        data_loc['last_corpus_type'] = corpus_type
-        self.data_loc['progress_made'] = 0
+        if corpus_type != data_loc['last_corpus_type']:
+            data_loc['last_corpus_type'] = corpus_type
+            self.data_loc['progress_made'] = 0
         json.dump(data_loc, file)
         file.close()
         
@@ -129,20 +131,22 @@ class ModelTrainer():
             if split != self.data_loc['last_corpus_type']:
                 continue
             self._download_data(split)
-            step_count = self.training_params['max_iterations'] * self.accumulation_step * (1 - self.data_loc['progress_made'])
+            step_count = self.training_params['max_iterations'] * self.accumulation_step
+            progress = int(step_count * (1 - self.data_loc['progress_made']))
 
-            for step in range(step_count):
-                if step % self.training_params['eval_interval'] == 0 or step == step_count - 1:
-                    self.data_loc['progress_made'] = step / step_count
+            for step in range(progress):
+                if step % self.training_params['eval_interval'] == 0 or step == progress - 1:
+                    current_step = step_count - progress + step
+                    self.data_loc['progress_made'] = current_step / step_count
                     losses = self._evaluate_model()
-                    print(f"For {split} data, step {step}:")
+                    print(f"For {split} data, step {current_step}:")
                     print(f"\tModel loss -> train: {losses['train']}, eval: {losses['eval']}")
                     drive_id = self._save_model()
                     print(f"\tModel sucessfully saved @ {drive_id}...")
-                    progress_bar("Model Training Iterations", step / step_count)
+                    progress_bar("Model Training Iterations", current_step / step_count)
                     print("\033[4A")
                 
                 self._training_step()
 
-                if step % self.accumulation_step == self.accumulation_step - 1 or step == step_count - 1:
+                if step % self.accumulation_step == self.accumulation_step - 1 or step == progress - 1:
                     self._accumulation_step()
