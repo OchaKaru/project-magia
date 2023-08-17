@@ -43,7 +43,7 @@ class ModelTrainer():
         save(self.model_to_train.state_dict(), self.data_loc['model_file'])
         file_metadata = {'name': self.data_loc['model_file_name'], 'parents': self.data_loc['model_parent_ids']}
 
-        new_drive_id = self.service_client.resumable_upload(self.data_loc['model_file'], metadata = file_metadata, mimetype = 'text/plain')
+        new_drive_id = self.service_client.resumable_upload(self.data_loc['model_file'], metadata = file_metadata, mimetype = 'text/plain', chunksize = 786432)
 
         if self.data_loc['model_drive_id'] != '':
             self.service_client.delete(self.data_loc['model_drive_id'])
@@ -141,10 +141,13 @@ class ModelTrainer():
                     losses = self._evaluate_model()
                     print(f"For {split} data, step {current_step}:")
                     print(f"\tModel loss -> train: {losses['train']}, eval: {losses['eval']}")
-                    drive_id = self._save_model()
-                    print(f"\tModel sucessfully saved @ {drive_id}...")
-                    progress_bar("Model Training Iterations", current_step / step_count)
-                    print("\033[4A")
+                    if step == 0:
+                        print("\tSave skipped because the model was just loaded...\033[3A")
+                    else:
+                        drive_id = self._save_model()
+                        print(f"\tModel sucessfully saved @ {drive_id}...")
+                        progress_bar("Model Training Iterations", current_step / step_count)
+                        print("\033[4A")
                 
                 self._training_step()
 

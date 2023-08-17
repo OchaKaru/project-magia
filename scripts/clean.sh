@@ -2,5 +2,5 @@
 
 pip install -r ./scripts/util/required
 clear
-echo "Starting Data Collection"
-python3 datacollector.py
+echo "Starting data cleaning"
+python3 cleandata.py

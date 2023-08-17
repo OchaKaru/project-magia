@@ -5,7 +5,7 @@ import json
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload, MediaIoBaseDownload
 
 class DriveAPI:
     def __init__(self, cred_file: str):
@@ -74,6 +74,17 @@ class DriveAPI:
     
     def delete(self, file_id):
         self.service_client.files().delete(fileId = file_id).execute()
+        
+    def create(self, content: str, metadata: dict = None, mimetype: str = None, chunksize: int = 262144):
+        if self._check_mimetype(mimetype) is None:
+            return None
+
+        media_to_upload = MediaIoBaseUpload(BytesIO(content.encode('utf-8')), mimetype = mimetype, resumable = True, chunksize = chunksize)
+        
+        request = self.service_client.files().create(body = metadata, media_body = media_to_upload, fields = 'id')
+        response = self._send_chunks(request)
+        
+        return response['id']
         
 if __name__ == '__main__':
     google_drive = DriveAPI('../../sessions/google-drive-cred.json')
